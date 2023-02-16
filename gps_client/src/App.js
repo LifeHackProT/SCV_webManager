@@ -5,6 +5,7 @@ function App() {
   return (
     <div className="App">
       <Kakaomap />
+        <p>  와 리액트가 되요!!</p>
     </div>
   );
 }
