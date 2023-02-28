@@ -1,10 +1,13 @@
 /* global kakao */
 import React, { useEffect, useState } from 'react';
 import ROSLIB from 'roslib';
-import ROS3D from 'roslib';
+import * as ROS3D from 'ros3d';
 import { MapMarker, Map, Polyline } from "react-kakao-maps-sdk";
 const Kakaomap = () => {
 
+    /**
+     * --------카카오 맵 설정--------
+     * */
     //지도 중심좌표
     const [state, setState] = useState({
         center: {
@@ -15,10 +18,25 @@ const Kakaomap = () => {
         isLoading: true,
     })
 
-    //웹소켓 사용 ROSLIB websocket
-    var rosbridge_url = 'ws://localhost:9090';
+    //마커 위도경도
+    const [markLoc, setMarkLoc] = useState([{
+        lat : state.center.lat,
+        lng : state.center.lng,
+    }]);
 
-    var ros = new ROSLIB.Ros({
+    //마커 이동 선 표시
+    const [line, setLine] = useState ([{
+        lat : state.center.lat,
+        lng : state.center.lng,
+    },])
+
+
+    /**
+     * ---------ROS gps 연결----------
+     * */
+    //웹소켓 사용 ROSLIB websocket
+    let rosbridge_url = 'ws://localhost:9090';
+    let ros = new ROSLIB.Ros({
         url: rosbridge_url
     });
 
@@ -34,57 +52,22 @@ const Kakaomap = () => {
         console.log('Connection to websocket server closed.');
     });
 
-    //Subscribing to a Topic
-    var listener = new ROSLIB.Topic({
+    //Subscribing to a Topic, kakaoMap gps data
+    let listener = new ROSLIB.Topic({
         ros : ros,
         name : '/converted_gps_data',
         messageType : "sensor_msgs/NavSatFix"
     });
 
-    //velodyne 연결
-    var viewer = new ROS3D.Viewer({
-        divID : 'viewer',
-        width : 800,
-        height : 600,
-        antialias : true
-    });
-
-    var tfClient = new ROSLIB.TFClient({
-        ros : ros,
-        angularThres : 0.01,
-        transThres : 0.01,
-        rate : 10.0,
-        fixedFrame : '/velodyne'
-    });
-
-    //Create Kinect scene node
-    var kinectNode = new ROS3D.SceneNode({
-        frameID : 'velodyne',
-        tfClient : tfClient,
-        object : PointCloud2
-    });
-
-    //마커 위도경도
-    const [markLoc, setMarkLoc] = useState([{
-        lat : state.center.lat,
-        lng : state.center.lng,
-    }]);
-
-    //마커 이동 선 표시
-    const [line, setLine] = useState ([{
-        lat : state.center.lat,
-        lng : state.center.lng,
-    },])
-
     useEffect(
         () => {
-            //rosbag 메세지 콘솔창 출력
+            //rosbag 카카오 맵 gps 메세지 콘솔창 출력
             listener.subscribe(function(message) {
                 console.log('Received message on' + listener.name
                     + '\nlatitude : ' + message.latitude
                     + '\nlongtitude : ' + message.longitude,
                 );
-                //마커 위도경도 변경
+                //마커 위도 경도 변경
                 setMarkLoc({
                     lat: message.latitude, lng: message.longitude
                 })
@@ -92,23 +75,59 @@ const Kakaomap = () => {
                 setState({
                     center: { lat: message.latitude, lng: message.longitude }
                 })
-                // //선 표시
-                // const onCreate = () => {
-                //     const newLine = {
-                //         lat: message.latitude,
-                //         lng: message.longitude,
-                //     };
-                //     setLine([...line, newLine]);
-                // }
+                // 마커 이동 선 표시
+                /*const onCreate = () => {
+                    const newLine = {
+                        lat: message.latitude,
+                        lng: message.longitude,
+                    };
+                    setLine([...line, newLine]);
+                }*/
             });
             return () => {
                 listener.unsubscribe();
             }
         },)
 
+    /**
+     * ------velodyne ROS3D 연결-------
+     * */
+    /**
+     * Setup all visualization elements when the page is loaded.
+     * FROM. https://github.com/RobotWebTools/ros3djs/blob/develop/examples/pointcloud2.html
+     */
+
+    // Create the main viewer.
+    let viewer = new ROS3D.Viewer({
+            divID: 'viewer',
+            width: 800,
+            height: 600,
+            antialias: true,
+        });
+
+    // Set up a client to listen to TFs.
+    let tfClient = new ROSLIB.TFClient({
+        ros : ros,
+        angularThres: 0.01,
+        transThres: 0.01,
+        rate: 10.0,
+        fixedFrame: '/velodyne'
+    });
+
+    let cloudClient = new ROS3D.PointCloud2({
+        ros: ros,
+        tfClient: tfClient,
+        rootObject: viewer.scene,
+        topic: '/velodyne_points',
+        material: { size: 0.05, color: "ff0000" }
+    });
+
     return (
         <div>
-            <Map // 지도를 표시할 Container
+            <div>
+                <div className={"velodyne-viewer"} id={'viewer'}></div>
+            </div>
+            <Map // 카카오 맵 지도를 표시할 Container
                 center={state.center}
                 style={{
                     // 지도의 크기
