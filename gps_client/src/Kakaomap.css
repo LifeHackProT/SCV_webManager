@@ -1,0 +1,32 @@
+
+.box-column {
+    margin-left: 50px;
+    margin-right: 50px;
+    margin-bottom: 50px;
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.header{
+    border: 5px;
+    height: 30px;
+    align-items: flex-start;
+}
+
+.text-container {
+    text-align: justify;
+    margin-left: 50px;
+    margin-right: 50px;
+}
+
+.h-line {
+    border-bottom: solid black;
+    height: 3px;
+}
+
+.map {
+    border: 100px;
+    display: inline-block;
+    width: 95%;
+    height: 500px;
+}
